@@ -47,4 +47,11 @@ public class Customers {
 
     @Column(name = "role")
     private String role;
+
+
+    @Column(name = "oauth_provider", nullable = false)
+    private String oauthProvider = "LOCAL";
+
+    @Column(name = "oauth_provider_id")
+    private String oauthProviderId;
 }

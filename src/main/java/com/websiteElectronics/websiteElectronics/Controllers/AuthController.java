@@ -111,15 +111,15 @@ public class AuthController {
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {
         if (authentication != null && authentication.isAuthenticated()) {
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            
+
             return ResponseEntity.ok(new AuthResponse(
-                "Thông tin user hiện tại",
-                userDetails.getUsername(),
-                userDetails.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList()),
-                null,
-                null
+                    "Thông tin user hiện tại",
+                    userDetails.getUsername(),
+                    userDetails.getAuthorities().stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .collect(Collectors.toList()),
+                    null,
+                    null
             ));
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Chưa đăng nhập");

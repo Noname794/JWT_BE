@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Ignore custom files (added by you)
+*.sql
+*.txt

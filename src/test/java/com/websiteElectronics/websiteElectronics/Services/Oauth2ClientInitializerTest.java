@@ -100,7 +100,7 @@ public class Oauth2ClientInitializerTest {
 
         Oauth2Clients savedClient = clientCaptor.getValue();
         assertTrue(savedClient.getClientSecret().startsWith("{bcrypt}"));
-        assertNotEquals("react-secret", savedClient.getClientSecret()); // Secret should be encoded
+        assertNotEquals("react-secret", savedClient.getClientSecret());
     }
 
     @Test
@@ -183,8 +183,8 @@ public class Oauth2ClientInitializerTest {
         verify(oauth2ClientsRepository).save(clientCaptor.capture());
 
         Oauth2Clients savedClient = clientCaptor.getValue();
-        assertEquals(3600, savedClient.getAccessTokenValiditySeconds()); // 1 hour
-        assertEquals(2592000, savedClient.getRefreshTokenValiditySeconds()); // 30 days
+        assertEquals(3600, savedClient.getAccessTokenValiditySeconds());
+        assertEquals(2592000, savedClient.getRefreshTokenValiditySeconds()); // 30 ngay
     }
 
     @Test

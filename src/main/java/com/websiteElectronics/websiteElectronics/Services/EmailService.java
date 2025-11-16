@@ -5,4 +5,6 @@ import jakarta.mail.MessagingException;
 
 public interface EmailService {
     void sendInvoiceEmail(String to, String subject, String content, String filePath) throws MessagingException;
+    
+    void sendOtpEmail(String to, String otp) throws MessagingException;
 }

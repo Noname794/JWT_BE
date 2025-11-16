@@ -1,5 +1,6 @@
 package com.websiteElectronics.websiteElectronics.Entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,6 +10,7 @@ import lombok.*;
 @Getter
 @Setter
 @Entity
+@Table(name = "orderdetails")
 public class OrderDetails {
 
     @Id
@@ -18,11 +20,14 @@ public class OrderDetails {
 
     @ManyToOne
     @JoinColumn(name = "order_id")
+    @JsonIgnoreProperties({"orderDetails", "customer"})
     Orders orderId;
 
     @ManyToOne
     @JoinColumn(name = "product_id")
+    @JsonIgnoreProperties({"orderDetails", "reviews", "shoppingCarts"})
     Products productId;
+    
     private int quantity;
 
 }

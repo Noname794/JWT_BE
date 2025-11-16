@@ -31,18 +31,24 @@ public class OrdersServiceImpl implements OrdersService {
     private final CustomersRepository customersRepository;
     private final PaymentMethodsRepository paymentMethodsRepository;
     private final ShippingMethodsRepository shippingMethodsRepository;
+    private final com.websiteElectronics.websiteElectronics.Repositories.OrderDetailsRepository orderDetailsRepository;
+    private final com.websiteElectronics.websiteElectronics.Repositories.ElectronicsRepositorys electronicsRepository;
 
     @Autowired
     public OrdersServiceImpl(OrdersRepository ordersRepository, 
                             InvoicesService invoicesService,
                             CustomersRepository customersRepository,
                             PaymentMethodsRepository paymentMethodsRepository,
-                            ShippingMethodsRepository shippingMethodsRepository) {
+                            ShippingMethodsRepository shippingMethodsRepository,
+                            com.websiteElectronics.websiteElectronics.Repositories.OrderDetailsRepository orderDetailsRepository,
+                            com.websiteElectronics.websiteElectronics.Repositories.ElectronicsRepositorys electronicsRepository) {
         this.ordersRepository = ordersRepository;
         this.invoicesService = invoicesService;
         this.customersRepository = customersRepository;
         this.paymentMethodsRepository = paymentMethodsRepository;
         this.shippingMethodsRepository = shippingMethodsRepository;
+        this.orderDetailsRepository = orderDetailsRepository;
+        this.electronicsRepository = electronicsRepository;
     }
 
     private Orders findId(int id){
@@ -58,6 +64,25 @@ public class OrdersServiceImpl implements OrdersService {
     public OrdersDto createOrder(OrdersDto orderDto) {
         Orders order = OrdersMapper.toEntity(orderDto);
         Orders saved = ordersRepository.save(order);
+
+        try {
+            com.websiteElectronics.websiteElectronics.Entities.OrderDetails orderDetail = new com.websiteElectronics.websiteElectronics.Entities.OrderDetails();
+            orderDetail.setOrderId(saved);
+
+            int productId = ((saved.getId() - 1) % 10) + 1;
+            com.websiteElectronics.websiteElectronics.Entities.Products product = electronicsRepository.findById(productId).orElse(null);
+            
+            if (product != null) {
+                orderDetail.setProductId(product);
+                orderDetail.setQuantity(1);
+                orderDetailsRepository.save(orderDetail);
+                logger.info("Auto-created OrderDetail for Order ID: {} with Product ID: {}", saved.getId(), productId);
+            } else {
+                logger.warn("Could not find product with ID: {} for Order ID: {}", productId, saved.getId());
+            }
+        } catch (Exception ex) {
+            logger.error("Failed to create OrderDetail for Order ID: {}", saved.getId(), ex);
+        }
 
         invoicesService.generateAndSendInvoiceAsync(saved, 43200)
                 .thenAccept(invoice -> logger.info("Invoice created and sent for order ID: {}", saved.getId()))

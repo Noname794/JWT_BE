@@ -63,4 +63,19 @@ public class OrderDetailsServiceImpl implements OrderDetailsService {
         }
         return electronicsRepositorys.findByIdIn(productIds);
     }
+    
+    public List<OrderDetails> getAllOrderDetailsEntities() {
+        List<OrderDetails> result = orderDetailsRepository.findAll();
+        logger.info("=== DEBUG: getAllOrderDetailsEntities ===");
+        logger.info("Found {} order details in database", result.size());
+        if (!result.isEmpty()) {
+            OrderDetails first = result.get(0);
+            logger.info("First order detail: id={}, orderId={}, productId={}, quantity={}", 
+                first.getId(), 
+                first.getOrderId() != null ? first.getOrderId().getId() : "null",
+                first.getProductId() != null ? first.getProductId().getId() : "null",
+                first.getQuantity());
+        }
+        return result;
+    }
 }

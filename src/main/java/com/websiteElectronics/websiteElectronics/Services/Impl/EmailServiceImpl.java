@@ -14,7 +14,6 @@ import java.io.File;
 @Service
 public class EmailServiceImpl implements EmailService {
 
-
     private final JavaMailSender mailSender;
 
     @Autowired
@@ -36,6 +35,26 @@ public class EmailServiceImpl implements EmailService {
             helper.addAttachment("HoaDon_" + System.currentTimeMillis() + ".txt", file);
         }
 
+        mailSender.send(message);
+    }
+    
+    @Override
+    public void sendOtpEmail(String to, String otp) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        
+        helper.setTo(to);
+        helper.setSubject("Xác thực đăng ký tài khoản");
+        
+        String content = "<html><body>" +
+                "<h2>Xác thực đăng ký tài khoản</h2>" +
+                "<p>Mã OTP của bạn là: <strong style='font-size: 24px; color: #007bff;'>" + otp + "</strong></p>" +
+                "<p>Mã này sẽ hết hạn sau 5 phút.</p>" +
+                "<p>Nếu bạn không yêu cầu đăng ký, vui lòng bỏ qua email này.</p>" +
+                "</body></html>";
+        
+        helper.setText(content, true);
+        
         mailSender.send(message);
     }
 }

@@ -3,9 +3,11 @@ package com.websiteElectronics.websiteElectronics.Config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,6 +24,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -50,6 +53,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -58,8 +62,10 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/verify-otp").permitAll()
+                        .requestMatchers("/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password").permitAll()
                         .requestMatchers("/login/oauth2/**", "/oauth2/**").permitAll()
+                        .requestMatchers("/api/chatBot/**").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/customers/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/electronics/**", "/api/categories/**").authenticated()

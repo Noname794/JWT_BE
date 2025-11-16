@@ -1,12 +1,11 @@
 package com.websiteElectronics.websiteElectronics.Controllers;
 
-import com.websiteElectronics.websiteElectronics.Dtos.CustomersDto;
-import com.websiteElectronics.websiteElectronics.Dtos.LoginRequest;
-import com.websiteElectronics.websiteElectronics.Dtos.AuthResponse;
-import com.websiteElectronics.websiteElectronics.Dtos.RegisterRequest;
+import com.websiteElectronics.websiteElectronics.Dtos.*;
 import com.websiteElectronics.websiteElectronics.Entities.Customers;
 import com.websiteElectronics.websiteElectronics.Repositories.CustomersRepository;
+import com.websiteElectronics.websiteElectronics.Services.AuthService;
 import com.websiteElectronics.websiteElectronics.Services.CustomersService;
+import com.websiteElectronics.websiteElectronics.Services.EmailVerificationService;
 import com.websiteElectronics.websiteElectronics.Services.Impl.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +43,12 @@ public class AuthController {
 
     @Autowired
     private CustomersService customersService;
+
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private EmailVerificationService emailVerificationService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -86,25 +91,61 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/google/verify")
+    public ResponseEntity<LoginResponse> verifyGg(@RequestBody GoogleTokenRequest googleTokenRequest) {
+        LoginResponse loginResponse = authService.verifyGg(googleTokenRequest.getIdToken());
+        return ResponseEntity.ok(loginResponse);
+    }
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
-        if (customersRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Email đã được sử dụng");
+        try {
+
+            if (customersRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "Email đã được sử dụng"));
+            }
+
+            emailVerificationService.sendOtpForRegistration(registerRequest);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra email và xác thực.",
+                    "email", registerRequest.getEmail()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Lỗi khi gửi email: " + e.getMessage()));
         }
+    }
 
-        String hashedPassword = passwordEncoder.encode(registerRequest.getPassword());
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequest verifyOtpRequest) {
+        boolean isVerified = emailVerificationService.verifyOtpAndRegister(
+                verifyOtpRequest.getEmail(),
+                verifyOtpRequest.getOtp()
+        );
 
-        Customers newCustomer = new Customers();
-        newCustomer.setFirstName(registerRequest.getFirstName());
-        newCustomer.setLastName(registerRequest.getLastName());
-        newCustomer.setEmail(registerRequest.getEmail());
-        newCustomer.setPassword(hashedPassword);
-        newCustomer.setRole("USER");
+        if (isVerified) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "Xác thực thành công! Tài khoản của bạn đã được tạo."
+            ));
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Mã OTP không hợp lệ hoặc đã hết hạn"));
+        }
+    }
 
-        customersRepository.save(newCustomer);
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refreshToken(@RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        LoginResponse response = authService.refreshToken(jwt);
+        return ResponseEntity.ok(response);
+    }
 
-        return ResponseEntity.ok(Map.of("message", "success"));
+    @GetMapping("/validate")
+    public ResponseEntity<Boolean> validateToken(@RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        boolean isValid = authService.validateToken(jwt);
+        return ResponseEntity.ok(isValid);
     }
 
     @GetMapping("/me")
@@ -123,5 +164,64 @@ public class AuthController {
             ));
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Chưa đăng nhập");
+    }
+    
+    // ==================== FORGOT PASSWORD ====================
+    
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            emailVerificationService.sendOtpForPasswordReset(request.getEmail());
+            
+            return ResponseEntity.ok(Map.of(
+                    "message", "Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra email.",
+                    "email", request.getEmail()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Email không tồn tại trong hệ thống"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Lỗi khi gửi email: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/verify-reset-otp")
+    public ResponseEntity<?> verifyResetOtp(@Valid @RequestBody VerifyResetOtpRequest request) {
+        boolean isValid = emailVerificationService.verifyResetOtp(
+                request.getEmail(),
+                request.getOtp()
+        );
+        
+        if (isValid) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "Mã OTP hợp lệ. Bạn có thể đặt lại mật khẩu.",
+                    "valid", true
+            ));
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "message", "Mã OTP không hợp lệ hoặc đã hết hạn",
+                            "valid", false
+                    ));
+        }
+    }
+    
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        boolean isReset = emailVerificationService.resetPassword(
+                request.getEmail(),
+                request.getOtp(),
+                request.getNewPassword()
+        );
+        
+        if (isReset) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "Mật khẩu đã được đặt lại thành công. Bạn có thể đăng nhập với mật khẩu mới."
+            ));
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Không thể đặt lại mật khẩu. Mã OTP không hợp lệ hoặc đã hết hạn."));
+        }
     }
 }

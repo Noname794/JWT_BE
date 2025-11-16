@@ -2,6 +2,7 @@ package com.websiteElectronics.websiteElectronics.Controllers;
 
 import com.websiteElectronics.websiteElectronics.Controllers.ExportToExcel.OrdersDetailExport;
 import com.websiteElectronics.websiteElectronics.Dtos.OrderDetailsDto;
+import com.websiteElectronics.websiteElectronics.Entities.OrderDetails;
 import com.websiteElectronics.websiteElectronics.Entities.Products;
 import com.websiteElectronics.websiteElectronics.Services.OrderDetailsService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,7 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 //@CrossOrigin("*")
@@ -62,5 +64,29 @@ public class OrderDetailsController {
 
         List<OrderDetailsDto> orderDetails = orderDetailsService.lstOrderDetails();
         OrdersDetailExport.exportToCsv(orderDetails, response.getOutputStream());
+    }
+    
+    @GetMapping("/simple")
+    public ResponseEntity<List<Map<String, Object>>> getAllOrderDetailsSimple() {
+        System.out.println("=== API /simple called ===");
+        List<OrderDetails> orderDetails = orderDetailsService.getAllOrderDetailsEntities();
+        System.out.println("Service returned: " + orderDetails.size() + " items");
+        
+        List<Map<String, Object>> result = orderDetails.stream()
+            .map(detail -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", detail.getId());
+                map.put("orderId", detail.getOrderId() != null ? detail.getOrderId().getId() : null);
+                map.put("productId", detail.getProductId() != null ? detail.getProductId().getId() : null);
+                map.put("quantity", detail.getQuantity());
+                return map;
+            })
+            .collect(Collectors.toList());
+        
+        System.out.println("Returning: " + result.size() + " items");
+        if (!result.isEmpty()) {
+            System.out.println("First item: " + result.get(0));
+        }
+        return ResponseEntity.ok(result);
     }
 }

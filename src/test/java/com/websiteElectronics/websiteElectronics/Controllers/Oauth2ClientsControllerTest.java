@@ -131,7 +131,6 @@ public class Oauth2ClientsControllerTest {
         Mockito.when(oauth2ClientsService.updateClient(eq("non-existent"), any(Oauth2ClientsDto.class)))
                 .thenThrow(new RuntimeException("OAuth2 Client not found with id: non-existent"));
 
-        // Act & Assert
         mockMvc.perform(put("/api/oauth2-clients/non-existent")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(testClientDto)))
